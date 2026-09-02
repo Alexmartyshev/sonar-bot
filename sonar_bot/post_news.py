@@ -32,13 +32,10 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-# --- Источники новостей (RSS). Добавляй/убирай по вкусу. -------------------
+# --- Источники новостей (RSS), только на русском. Добавляй/убирай по вкусу.
 FEEDS = [
-    {"name": "Cointelegraph", "url": "https://cointelegraph.com/rss", "lang": "EN"},
-    {"name": "Cointelegraph RU", "url": "https://ru.cointelegraph.com/rss", "lang": "RU"},
-    {"name": "CoinDesk", "url": "https://www.coindesk.com/arc/outboundfeeds/rss", "lang": "EN"},
-    {"name": "Decrypt", "url": "https://decrypt.co/feed", "lang": "EN"},
-    {"name": "CryptoSlate", "url": "https://cryptoslate.com/feed/", "lang": "EN"},
+    {"name": "Cointelegraph", "url": "https://ru.cointelegraph.com/rss"},
+    {"name": "ForkLog", "url": "https://forklog.com/feed"},
 ]
 
 # Сколько новых новостей публиковать за один запуск (защита от спама,
@@ -95,7 +92,8 @@ def send_telegram_message(text: str) -> bool:
         "chat_id": TELEGRAM_CHAT_ID,
         "text": text,
         "parse_mode": "HTML",
-        "disable_web_page_preview": False,
+        # без превью-карточки — просто короткая ссылка "(читать)" в тексте
+        "disable_web_page_preview": True,
     }
     data = urllib.parse.urlencode(payload).encode("utf-8")
     req = urllib.request.Request(api_url, data=data, method="POST")
@@ -108,12 +106,10 @@ def send_telegram_message(text: str) -> bool:
         return False
 
 
-def format_message(item: dict, source_name: str, lang: str) -> str:
-    flag = "🇬🇧" if lang == "EN" else "🇷🇺"
+def format_message(item: dict, source_name: str) -> str:
     return (
-        f"{flag} <b>{source_name}</b>\n"
-        f"{item['title']}\n\n"
-        f'<a href="{item["link"]}">Читать источник →</a>'
+        f"📰 <b>{item['title']}</b>\n"
+        f'{source_name} · <a href="{item["link"]}">(читать)</a>'
     )
 
 
@@ -139,7 +135,7 @@ def main() -> int:
             if item["link"] in posted:
                 continue
 
-            message = format_message(item, feed["name"], feed["lang"])
+            message = format_message(item, feed["name"])
             if send_telegram_message(message):
                 print(f"[ok] posted: {item['title'][:70]}")
                 posted.add(item["link"])
